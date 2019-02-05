@@ -1,8 +1,6 @@
-const canvasWidth = 800;
+const canvasWidth = 1200;
 const canvasHeight = 800;
 const pointSize = 6;
-const seriesHistory = 380;
-let persistent = false;
 
 class Point {
     constructor(x, y) {
@@ -51,18 +49,36 @@ class Circle {
 }
 
 class Circles {
-    constructor(center) {
+    constructor(center, historySize = 380) {
         this._center = center;
         this._circles = [];
-        this._series = [];
+        this._history = [];
+        this._persistent = false;
+        this._historySize = historySize;
+    }
+
+    get persistent() {
+        return this._persistent;
+    }
+
+    set persistent(value) {
+        if(value) {
+            this.clearHistory();
+        }
+        this._persistent = value;
+    }
+
+    clearHistory() {
+        this._history = [];
+    }
+    
+    clear() {
+        this.clearHistory();
+        this._circles = [];
     }
 
     push(circle) {
         this._circles.push(circle);
-    }
-
-    clearHistory() {
-        this._series = [];
     }
 
     update() {
@@ -77,19 +93,19 @@ class Circles {
             center = circle.draw(center);
         }
 
-        this._series.unshift(center);
-        if (this._series.length > seriesHistory) {
-            this._series.pop();
+        this._history.unshift(center);
+        if (this._history.length > this._historySize) {
+            this._history.pop();
         }
 
         fill(255, 0, 0);
         noStroke();
         ellipse(center.x, center.y, pointSize, pointSize);
 
-        if (persistent) {
+        if (this._persistent) {
             fill(255, 0, 0);
             noStroke();
-            for(let s of this._series) {
+            for(let s of this._history) {
                 ellipse(s.x, s.y, pointSize, pointSize);
             }
         }
@@ -101,7 +117,7 @@ class Circles {
         noFill();
         stroke(0);
         beginShape();
-        for (let s of this._series) {
+        for (let s of this._history) {
             vertex(startX, s.y);
             startX++;
         }
@@ -114,7 +130,7 @@ class Circles {
         noFill();
         stroke(0);
         beginShape();
-        for (let s of this._series) {
+        for (let s of this._history) {
             vertex(s.x, startY);
             startY++;
         }
@@ -122,18 +138,11 @@ class Circles {
     }
 }
 
-let circles = new Circles(new Point(canvasWidth * 0.3, canvasHeight * 0.3));
+let circles = new Circles(new Point(canvasWidth * 0.3, canvasHeight * 0.3), 380);
 
 function setup() {
     let canvas = createCanvas(canvasWidth, canvasHeight);
     canvas.parent('sketch-holder');
-
-    let baseSize = 100;
-    let baseFreq = 10 / 360;
-
-    for (let i = 1; i < 4; i += 2) {
-        circles.push(new Circle(baseSize / i, baseFreq * i, 0.0));
-    }
 }
 
 function draw() {
@@ -145,7 +154,19 @@ function draw() {
 
 $(function () {
     $('#persistent').change(function () {
-        circles.clearHistory();
-        persistent = this.checked;
+        circles.persistent = this.checked;
     });
+
+    $('#load-harmonics').click(function() {
+        try {
+            let harmonics = JSON.parse($('#harmonics').val());
+                
+            circles.clear();
+            for(let h of harmonics) {
+                circles.push(new Circle(h.amplitude, h.frequency, h.phase));
+            }
+        } catch(e) {
+            console.log('Wrong JSON', e);
+        }
+    }).click();
 });
