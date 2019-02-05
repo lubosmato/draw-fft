@@ -8,7 +8,7 @@ from operator import itemgetter
 
 def generate_test(harmonics_length=100):
     t = np.linspace(0, 1, 1000)
-    samples = signal.square(2 * np.pi * 5 * t) * 0.2
+    samples = signal.sawtooth(2 * np.pi * 5 * t) * 0.2
 
     np.fft.fft(samples)
     fourier = np.fft.fft(samples)

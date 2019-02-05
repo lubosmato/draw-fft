@@ -24,7 +24,7 @@ class Circle {
     }
 
     update() {
-        this._angle += this._frequency;
+        this._angle -= this._frequency;
     }
 
     calculateTip(center) {
@@ -110,7 +110,7 @@ class Circles {
             }
         }
 
-        let startX = canvasWidth * 0.5;
+        let startX = canvasWidth * 0.4;
         stroke(255, 150, 150);
         line(center.x, center.y, startX, center.y);
 
@@ -119,7 +119,7 @@ class Circles {
         beginShape();
         for (let s of this._history) {
             vertex(startX, s.y);
-            startX++;
+            startX--;
         }
         endShape();
 
@@ -138,7 +138,7 @@ class Circles {
     }
 }
 
-let circles = new Circles(new Point(canvasWidth * 0.3, canvasHeight * 0.3), 380);
+let circles = new Circles(new Point(canvasWidth * 0.7, canvasHeight * 0.3), 380);
 
 function setup() {
     let canvas = createCanvas(canvasWidth, canvasHeight);
