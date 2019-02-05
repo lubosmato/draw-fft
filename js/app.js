@@ -2,7 +2,7 @@ const canvasWidth = 800;
 const canvasHeight = 800;
 const pointSize = 6;
 const drawOnlyRedPoint = false;
-const seriesHistory = 200;
+const seriesHistory = 380;
 
 class Point {
     constructor(x, y) {
@@ -75,7 +75,7 @@ class Circles {
             center = circle.draw(center);
         }
 
-        this._series.unshift(center.y);
+        this._series.unshift(center);
         if (this._series.length > seriesHistory) {
             this._series.pop();
         }
@@ -84,22 +84,37 @@ class Circles {
         noStroke();
         ellipse(center.x, center.y, pointSize, pointSize);
 
-        let startX = canvasWidth * 0.7;
-        stroke(255, 150, 150);
-        line(center.x, center.y, startX, center.y);
+        if (!drawOnlyRedPoint) {
+            let startX = canvasWidth * 0.5;
+            stroke(255, 150, 150);
+            line(center.x, center.y, startX, center.y);
 
-        noFill();
-        stroke(0);
-        beginShape();
-        for (let s of this._series) {
-            vertex(startX, s);
-            startX++;
+            noFill();
+            stroke(0);
+            beginShape();
+            for (let s of this._series) {
+                vertex(startX, s.y);
+                startX++;
+            }
+            endShape();
+            
+            let startY = canvasHeight * 0.5;
+            stroke(255, 150, 150);
+            line(center.x, center.y, center.x, startY);
+
+            noFill();
+            stroke(0);
+            beginShape();
+            for (let s of this._series) {
+                vertex(s.x, startY);
+                startY++;
+            }
+            endShape();
         }
-        endShape();
     }
 }
 
-let circles = new Circles(new Point(canvasWidth * 0.2, canvasHeight * 0.5));
+let circles = new Circles(new Point(canvasWidth * 0.3, canvasHeight * 0.3));
 
 function setup() {
     let canvas = createCanvas(canvasWidth, canvasHeight);
@@ -107,7 +122,8 @@ function setup() {
 
     let baseSize = 100;
     let baseFreq = 10 / 360;
-    for (let i = 1; i < 10; i += 2) {
+    
+    for (let i = 1; i < 20; i += 2) {
         circles.push(new Circle(baseSize / i, baseFreq * i, 0.0));
     }
 }
