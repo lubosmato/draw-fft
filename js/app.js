@@ -1,8 +1,8 @@
 const canvasWidth = 800;
 const canvasHeight = 800;
 const pointSize = 6;
-const drawOnlyRedPoint = false;
 const seriesHistory = 380;
+let persistent = false;
 
 class Point {
     constructor(x, y) {
@@ -39,14 +39,12 @@ class Circle {
     draw(center) {
         let tip = this.calculateTip(center);
 
-        if (!drawOnlyRedPoint) {
-            stroke(220);
-            noFill();
-            ellipse(center.x, center.y, this._amplitude * 2, this._amplitude * 2);
-            line(center.x, center.y, tip.x, tip.y);
-            fill(0);
-            ellipse(tip.x, tip.y, pointSize, pointSize);
-        }
+        stroke(220);
+        noFill();
+        ellipse(center.x, center.y, this._amplitude * 2, this._amplitude * 2);
+        line(center.x, center.y, tip.x, tip.y);
+        fill(0);
+        ellipse(tip.x, tip.y, pointSize, pointSize);
 
         return tip;
     }
@@ -61,6 +59,10 @@ class Circles {
 
     push(circle) {
         this._circles.push(circle);
+    }
+
+    clearHistory() {
+        this._series = [];
     }
 
     update() {
@@ -84,33 +86,39 @@ class Circles {
         noStroke();
         ellipse(center.x, center.y, pointSize, pointSize);
 
-        if (!drawOnlyRedPoint) {
-            let startX = canvasWidth * 0.5;
-            stroke(255, 150, 150);
-            line(center.x, center.y, startX, center.y);
-
-            noFill();
-            stroke(0);
-            beginShape();
-            for (let s of this._series) {
-                vertex(startX, s.y);
-                startX++;
+        if (persistent) {
+            fill(255, 0, 0);
+            noStroke();
+            for(let s of this._series) {
+                ellipse(s.x, s.y, pointSize, pointSize);
             }
-            endShape();
-            
-            let startY = canvasHeight * 0.5;
-            stroke(255, 150, 150);
-            line(center.x, center.y, center.x, startY);
-
-            noFill();
-            stroke(0);
-            beginShape();
-            for (let s of this._series) {
-                vertex(s.x, startY);
-                startY++;
-            }
-            endShape();
         }
+
+        let startX = canvasWidth * 0.5;
+        stroke(255, 150, 150);
+        line(center.x, center.y, startX, center.y);
+
+        noFill();
+        stroke(0);
+        beginShape();
+        for (let s of this._series) {
+            vertex(startX, s.y);
+            startX++;
+        }
+        endShape();
+
+        let startY = canvasHeight * 0.5;
+        stroke(255, 150, 150);
+        line(center.x, center.y, center.x, startY);
+
+        noFill();
+        stroke(0);
+        beginShape();
+        for (let s of this._series) {
+            vertex(s.x, startY);
+            startY++;
+        }
+        endShape();
     }
 }
 
@@ -122,17 +130,22 @@ function setup() {
 
     let baseSize = 100;
     let baseFreq = 10 / 360;
-    
-    for (let i = 1; i < 20; i += 2) {
+
+    for (let i = 1; i < 4; i += 2) {
         circles.push(new Circle(baseSize / i, baseFreq * i, 0.0));
     }
 }
 
 function draw() {
-    if (!drawOnlyRedPoint) {
-        background(255);
-    }
+    background(255);
 
     circles.update();
     circles.draw();
 }
+
+$(function () {
+    $('#persistent').change(function () {
+        circles.clearHistory();
+        persistent = this.checked;
+    });
+});
