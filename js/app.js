@@ -1,6 +1,73 @@
-const canvasWidth = 1200;
-const canvasHeight = 800;
-const pointSize = 6;
+class CircularBuffer {
+    constructor(size) {
+        this._buffer = [];
+        this._buffer.length = size;
+
+        this._writeIndex = 0;
+    }
+
+    get size() {
+        return this._buffer.length;
+    }
+
+    set size(value) {
+        this._buffer.length = value;
+    }
+
+    push(value) {
+        this._buffer[this._writeIndex] = value;
+        this._writeIndex = this._right(this._writeIndex);
+    }
+
+    _left(index) {
+        let ret = index - 1;
+        if (ret < 0) {
+            ret = this._buffer.length - 1;
+        }
+        return ret;
+    }
+
+    _right(index) {
+        let ret = index + 1;
+        if (ret >= this._buffer.length) {
+            ret = 0;
+        }
+        return ret;
+    }
+
+    // TODO this is not working, n param is ignored
+    _iterator(n) {
+        var index = this._writeIndex;
+        var count = 0;
+        var data = this._buffer;
+        var that = this;
+
+        return {
+            next() {
+                index = that._left(index);
+                count += 1;
+                return {
+                    value: data[index],
+                    done: (count == data.length + 1) || data[index] == undefined
+                };
+            }
+        };
+    }
+
+    every(n) {
+        var buffer = this;
+        return {
+            [Symbol.iterator]() {
+                return buffer._iterator(n);
+            }
+        }
+    }
+
+    [Symbol.iterator]() {
+        return this._iterator(1);
+    }
+}
+
 
 class Point {
     constructor(x, y) {
@@ -8,6 +75,14 @@ class Point {
         this.y = y;
     }
 }
+
+const canvasWidth = 1200;
+const canvasHeight = 800;
+const signalRelativeOffset = new Point(0.2, 0.8);
+const pointSize = 6;
+let speedScale = 1.0;
+let amplitudeScale = 1.0;
+let historySizeScale = 1.0;
 
 class Circle {
     /**
@@ -24,12 +99,12 @@ class Circle {
     }
 
     update() {
-        this._angle -= this._frequency;
+        this._angle += this._frequency * speedScale;
     }
 
     calculateTip(center) {
-        let x = center.x + this._amplitude * Math.cos(this._angle);
-        let y = center.y + this._amplitude * Math.sin(this._angle);
+        let x = center.x + this._amplitude * amplitudeScale * Math.cos(this._angle);
+        let y = center.y + this._amplitude * amplitudeScale * Math.sin(this._angle);
 
         return new Point(x, y);
     }
@@ -39,7 +114,7 @@ class Circle {
 
         stroke(220);
         noFill();
-        ellipse(center.x, center.y, this._amplitude * 2, this._amplitude * 2);
+        ellipse(center.x, center.y, this._amplitude * 2 * amplitudeScale, this._amplitude * 2 * amplitudeScale);
         line(center.x, center.y, tip.x, tip.y);
         fill(0);
         ellipse(tip.x, tip.y, pointSize, pointSize);
@@ -49,12 +124,13 @@ class Circle {
 }
 
 class Circles {
-    constructor(center, historySize = 380) {
+    constructor(center) {
         this._center = center;
         this._circles = [];
-        this._history = [];
+        this._historySize = 10;
+        this._history = new CircularBuffer(this.historySize);
         this._persistent = false;
-        this._historySize = historySize;
+        this._shouldDrawSignals = true;
     }
 
     get persistent() {
@@ -62,16 +138,33 @@ class Circles {
     }
 
     set persistent(value) {
-        if(value) {
+        if (value) {
             this.clearHistory();
         }
         this._persistent = value;
     }
 
-    clearHistory() {
-        this._history = [];
+    get shouldDrawSignals() {
+        return this._shouldDrawSignals;
     }
-    
+
+    set shouldDrawSignals(value) {
+        this._shouldDrawSignals = value;
+    }
+
+    clearHistory() {
+        this._history = new CircularBuffer(this.historySize);
+    }
+
+    get historySize() {
+        return this._historySize;
+    }
+
+    set historySize(value) {
+        this._historySize = value;
+        this._history.size = value;
+    }
+
     clear() {
         this.clearHistory();
         this._circles = [];
@@ -88,57 +181,66 @@ class Circles {
     }
 
     draw() {
+        if (this._persistent) {
+            fill(255, 0, 0);
+            noStroke();
+            for (let point of this._history) {
+                ellipse(point.x, point.y, pointSize, pointSize);
+            }
+
+            /* // Line segments are bad looking
+            noFill();
+            stroke(255, 0, 0);
+            beginShape();
+            for (let point of this._history) {
+                vertex(point.x, point.y);
+            }
+            endShape();
+            */
+        }
+
         let center = this._center;
         for (let circle of this._circles) {
             center = circle.draw(center);
         }
 
-        this._history.unshift(center);
-        if (this._history.length > this._historySize) {
-            this._history.pop();
-        }
+        this._history.push(center);
 
         fill(255, 0, 0);
         noStroke();
         ellipse(center.x, center.y, pointSize, pointSize);
 
-        if (this._persistent) {
-            fill(255, 0, 0);
-            noStroke();
-            for(let s of this._history) {
-                ellipse(s.x, s.y, pointSize, pointSize);
+        if (this._shouldDrawSignals) {
+            let startX = canvasWidth * signalRelativeOffset.x;
+            stroke(255, 150, 150);
+            line(center.x, center.y, startX, center.y);
+
+            noFill();
+            stroke(0);
+            beginShape();
+            for (let point of this._history) {
+                vertex(startX, point.y);
+                startX--;
             }
+            endShape();
+
+            let startY = canvasHeight * signalRelativeOffset.y;
+            stroke(255, 150, 150);
+            line(center.x, center.y, center.x, startY);
+
+            noFill();
+            stroke(0);
+            beginShape();
+            for (let point of this._history) {
+                vertex(point.x, startY);
+                startY++;
+            }
+            endShape();
         }
-
-        let startX = canvasWidth * 0.4;
-        stroke(255, 150, 150);
-        line(center.x, center.y, startX, center.y);
-
-        noFill();
-        stroke(0);
-        beginShape();
-        for (let s of this._history) {
-            vertex(startX, s.y);
-            startX--;
-        }
-        endShape();
-
-        let startY = canvasHeight * 0.5;
-        stroke(255, 150, 150);
-        line(center.x, center.y, center.x, startY);
-
-        noFill();
-        stroke(0);
-        beginShape();
-        for (let s of this._history) {
-            vertex(s.x, startY);
-            startY++;
-        }
-        endShape();
     }
 }
 
-let circles = new Circles(new Point(canvasWidth * 0.7, canvasHeight * 0.3), 380);
+let circles = new Circles(new Point(canvasWidth * 0.5, canvasHeight * 0.5));
 
 function setup() {
     let canvas = createCanvas(canvasWidth, canvasHeight);
@@ -155,17 +257,34 @@ function draw() {
 $(function () {
     $('#persistent').change(function () {
         circles.persistent = this.checked;
-    });
+    }).change();
 
-    $('#load-harmonics').click(function() {
+    $('#show-signals').change(function () {
+        circles.shouldDrawSignals = this.checked;
+    }).change();
+
+    $('#speed').on('input', function () {
+        speedScale = this.value;
+    }).trigger('input');
+
+    $('#amplitude-scale').on('input', function () {
+        amplitudeScale = this.value;
+    }).trigger('input');
+
+    $('#history-size').on('input', function () {
+        historySize = this.value;
+        circles.historySize = historySize;
+    }).trigger('input');
+
+    $('#load-harmonics').click(function () {
         try {
             let harmonics = JSON.parse($('#harmonics').val());
-                
+
             circles.clear();
-            for(let h of harmonics) {
-                circles.push(new Circle(h.amplitude, h.frequency, h.phase));
+            for (let h of harmonics) {
+                circles.push(new Circle(h.a, h.f, h.p));
             }
-        } catch(e) {
+        } catch (e) {
             console.log('Wrong JSON', e);
         }
     }).click();
