@@ -25,8 +25,15 @@ def calculate_circles(points, scale=1.0, speed=2.0, harmonics_length=100) -> str
     samples = points * scale_factor
     samples = samples.view(np.complex).reshape((point_count,))
 
+    start_index = point_count // 2 - harmonics_length // 2
+    end_index = start_index + harmonics_length
+
     fourier = np.fft.fft(samples)
+    fourier = np.fft.fftshift(fourier[1:])[start_index:end_index]
+
     freq = np.fft.fftfreq(point_count, 1 / speed_factor)
+    freq = np.fft.fftshift(freq[1:])[start_index:end_index]
+
     amplitudes = np.abs(fourier)
     phases = np.angle(fourier)
 
@@ -34,22 +41,20 @@ def calculate_circles(points, scale=1.0, speed=2.0, harmonics_length=100) -> str
         {"a": a, "f": f, "p": p}
         for a, f, p in zip(amplitudes, freq, phases)
     ]
-
-    output = sorted(output, key=itemgetter("a"), reverse=True)[1:harmonics_length]
+    output = sorted(output, key=itemgetter("a"), reverse=True)
 
     return json.dumps(output)
 
 
 def main():
-    sample_count = 1000000
-
+    sample_count = 100000
     svg_paths, _ = svg2paths(sys.argv[1])
     vector_path = path.concatpaths(svg_paths)
 
     time = np.linspace(0.0, 1.0, sample_count)
     points = np.asarray([vector_path.point(t) for t in time]).view(np.float).reshape(sample_count, 2) * 0.005
 
-    circles_json = calculate_circles(points, speed=1.0, harmonics_length=250)
+    circles_json = calculate_circles(points, speed=1.0, harmonics_length=800)
     print(circles_json)
 
 
