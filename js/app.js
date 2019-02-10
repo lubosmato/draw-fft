@@ -283,19 +283,18 @@ $(function () {
                 $('.examples').append('<button class="btn btn-success btn-sm mt-1 load-example" data-key="'+key+'">Load <span>'+key+'</span></button> ');
             }
         }
-    });
+        $('.load-example').unbind('click').on('click', function() {
+            try {
+                let harmonics = harmonicsJson[$(this).data('key')];
 
-    $('.load-example').unbind('click').on('click', function() {
-        try {
-            let harmonics = harmonicsJson[$(this).data('key')];
-
-            circles.clear();
-            for (let h of harmonics) {
-                circles.push(new Circle(h.a, h.f, h.p));
+                circles.clear();
+                for (let h of harmonics) {
+                    circles.push(new Circle(h.a, h.f, h.p));
+                }
+            } catch (e) {
+                console.log('Wrong JSON', e);
             }
-        } catch (e) {
-            console.log('Wrong JSON', e);
-        }
+        });
     });
 
     $('#load-harmonics').click(function () {
